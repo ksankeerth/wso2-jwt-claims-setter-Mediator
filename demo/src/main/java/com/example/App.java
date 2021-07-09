@@ -6,11 +6,18 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.Claims;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
-import java.security.*;
+
 
 /**
  * Hello world!
@@ -20,7 +27,7 @@ public final class App {
     }
 
 
-    public static Optional<RSAPublicKey> getParsedPublicKey(String key){
+    public static Optional<PublicKey> getParsedPublicKey(String key){
         // public key content...excluding '---PUBLIC KEY---' and '---END PUBLIC KEY---'
          String PUB_KEY = key;
 
@@ -31,13 +38,21 @@ public final class App {
          }
 
          try {
-             byte[] decode = Base64.getDecoder().decode(PUBLIC_KEY);
-             X509EncodedKeySpec keySpecX509 = new X509EncodedKeySpec(decode);
-             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-             RSAPublicKey pubKey = (RSAPublicKey) keyFactory.generatePublic(keySpecX509);
-             return Optional.of(pubKey);
 
-         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+             String certb64 = "...";
+             byte[] certder = Base64.getDecoder().decode(PUB_KEY);
+             InputStream certstream = new ByteArrayInputStream (certder);
+             Certificate cert = CertificateFactory.getInstance("X.509").generateCertificate(certstream);
+             PublicKey pub = cert.getPublicKey();
+
+//             byte[] decode = Base64.getDecoder().decode(PUBLIC_KEY);
+
+//             X509EncodedKeySpec keySpecX509 = new X509EncodedKeySpec(decode);
+//             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+//             RSAPublicKey pubKey = (RSAPublicKey) keyFactory.generatePublic(keySpecX509);
+             return Optional.of(pub);
+
+         } catch (CertificateException e) {
              e.printStackTrace();
              System.out.println("Exception block | Public key parsing error ");
              return Optional.empty();
@@ -54,8 +69,8 @@ public final class App {
         Jws<Claims> jws;
         try {
             System.out.println("inside!");
-
-            String pubKey =  "-----BEGIN CERTIFICATE-----" +
+//"-----BEGIN CERTIFICATE-----" +
+            String pubKey =
                              "MIIDqTCCApGgAwIBAgIEXbABozANBgkqhkiG9w0BAQsFADBkMQswCQYDVQQGEwJV"+
                              "UzELMAkGA1UECAwCQ0ExFjAUBgNVBAcMDU1vdW50YWluIFZpZXcxDTALBgNVBAoM" +
                              "BFdTTzIxDTALBgNVBAsMBFdTTzIxEjAQBgNVBAMMCWxvY2FsaG9zdDAeFw0xOTEw" +
@@ -75,12 +90,11 @@ public final class App {
                              "VmVIq9QqBq1j7r6f3BWqaOIiknmTzEuqIVlOTY0gO+SHdS62vr2FCz4yOrBEulGA" +
                              "vomsU8sqg4PhFnkhxI4M912Ly+2RgN9L7AkhzK+EzXY1/QtlI/VysNfS6zrHasKz" +
                              "6CrKKCGqQnBnSvSTyF9OR5KFHnkAwE995IZrcSQicMxsLhTMUHDLQ/gRyy7V/ZpD" +
-                             "MfAWR+5OeQiNAp/bG4fjJoTdoqkul51+2bHHVrU=" +
-                             "-----END CERTIFICATE-----";
-//            String decodedPubKey = getParsedPublicKey(pubKey).get().;
-            jws = Jwts.parser()
-            .setSigningKey(Base64.getDecoder().decode(pubKey)
-               ).parseClaimsJws("eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6Ik5UZG1aak00WkRrM05qWTBZemM1TW1abU9EZ3dNVEUzTVdZd05ERTVNV1JsWkRnNE56YzRaQT09Iiwia2lkIjoiTlRkbVpqTTRaRGszTmpZMFl6YzVNbVptT0Rnd01URTNNV1l3TkRFNU1XUmxaRGc0TnpjNFpBPT1fUlMyNTYifQ==.eyJhdXQiOiJBUFBMSUNBVElPTiIsImh0dHA6XC9cL3dzbzIub3JnXC9jbGFpbXNcL2FwaW5hbWUiOiJIb3NwaXRhbFNlcnZpY2VBUEkiLCJodHRwOlwvXC93c28yLm9yZ1wvY2xhaW1zXC9hcHBsaWNhdGlvbnRpZXIiOiIxMFBlck1pbiIsImh0dHA6XC9cL3dzbzIub3JnXC9jbGFpbXNcL3ZlcnNpb24iOiJ2MSIsImh0dHA6XC9cL3dzbzIub3JnXC9jbGFpbXNcL2tleXR5cGUiOiJTQU5EQk9YIiwiaXNzIjoid3NvMi5vcmdcL3Byb2R1Y3RzXC9hbSIsImh0dHA6XC9cL3dzbzIub3JnXC9jbGFpbXNcL2FwcGxpY2F0aW9ubmFtZSI6IlRlc3RBUFAiLCJodHRwOlwvXC93c28yLm9yZ1wvY2xhaW1zXC9lbmR1c2VyIjoiYWRtaW5AY2FyYm9uLnN1cGVyIiwiaHR0cDpcL1wvd3NvMi5vcmdcL2NsYWltc1wvZW5kdXNlclRlbmFudElkIjoiLTEyMzQiLCJodHRwOlwvXC93c28yLm9yZ1wvY2xhaW1zXC9hcHBsaWNhdGlvblVVSWQiOiIwZTU5NzEzOC05ZTIyLTQzNDAtYTU3MS0yZTY0Yjk0NTE4YmQiLCJodHRwOlwvXC93c28yLm9yZ1wvY2xhaW1zXC9zdWJzY3JpYmVyIjoiYWRtaW4iLCJhenAiOiIzSVRsb3VEMFVTX1ZmZGNDQXl0YTFhUkZRRlFhIiwiaHR0cDpcL1wvd3NvMi5vcmdcL2NsYWltc1wvdGllciI6IkdvbGQiLCJzY29wZSI6ImFtX2FwcGxpY2F0aW9uX3Njb3BlIGRlZmF1bHQiLCJleHAiOjE2MjU4MDg2NDYsImh0dHA6XC9cL3dzbzIub3JnXC9jbGFpbXNcL2FwcGxpY2F0aW9uaWQiOiIyIiwiaHR0cDpcL1wvd3NvMi5vcmdcL2NsYWltc1wvdXNlcnR5cGUiOiJBcHBsaWNhdGlvbl9Vc2VyIiwiaWF0IjoxNjI1ODA3NzQ2LCJodHRwOlwvXC93c28yLm9yZ1wvY2xhaW1zXC9hcGljb250ZXh0IjoiXC9ob3NwaXRhbFwvdjEifQ==.NSCkdnuxDYcW66Lq_VKUwgmIRwVEe05_haXQuYofbNG7skwypZxk4gU_BrvvtbuXoRsPBmq_9H1YbRXNzuQ3nKUA8wIw1j731piQKTLoVr6-lzBmO703hUl0vLttZ2EzWS0r6r3cm5TcDqZXCQoQcJfePPs-f2eU9CgbRXoNLVb5JiHRqkJI5euRxRucxR0rpgmoHFBmTA9s_CT6Tnno-b61xjiCmOnXgCQQLCTZn0WOAj6VJkbovmM1JcADyDK2IBJNi38NrRppPZZFBC-GPRjoQkL3v_0ZYV9m5mtSQTx3grPr52JwSqmKFJVVtM2OytRzl8D4qbRE1F6lNbStIA==");
+                             "MfAWR+5OeQiNAp/bG4fjJoTdoqkul51+2bHHVrU=" ;
+            //+
+            //                             "-----END CERTIFICATE-----"
+            PublicKey decodedPubKey = getParsedPublicKey(pubKey).get();
+            jws = Jwts.parser().setSigningKey(decodedPubKey).parseClaimsJws("eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6Ik5UZG1aak00WkRrM05qWTBZemM1TW1abU9EZ3dNVEUzTVdZd05ERTVNV1JsWkRnNE56YzRaQT09Iiwia2lkIjoiTlRkbVpqTTRaRGszTmpZMFl6YzVNbVptT0Rnd01URTNNV1l3TkRFNU1XUmxaRGc0TnpjNFpBPT1fUlMyNTYifQ==.eyJhdXQiOiJBUFBMSUNBVElPTiIsImh0dHA6XC9cL3dzbzIub3JnXC9jbGFpbXNcL2FwaW5hbWUiOiJIb3NwaXRhbFNlcnZpY2VBUEkiLCJodHRwOlwvXC93c28yLm9yZ1wvY2xhaW1zXC9hcHBsaWNhdGlvbnRpZXIiOiIxMFBlck1pbiIsImh0dHA6XC9cL3dzbzIub3JnXC9jbGFpbXNcL3ZlcnNpb24iOiJ2MSIsImh0dHA6XC9cL3dzbzIub3JnXC9jbGFpbXNcL2tleXR5cGUiOiJTQU5EQk9YIiwiaXNzIjoid3NvMi5vcmdcL3Byb2R1Y3RzXC9hbSIsImh0dHA6XC9cL3dzbzIub3JnXC9jbGFpbXNcL2FwcGxpY2F0aW9ubmFtZSI6IlRlc3RBUFAiLCJodHRwOlwvXC93c28yLm9yZ1wvY2xhaW1zXC9lbmR1c2VyIjoiYWRtaW5AY2FyYm9uLnN1cGVyIiwiaHR0cDpcL1wvd3NvMi5vcmdcL2NsYWltc1wvZW5kdXNlclRlbmFudElkIjoiLTEyMzQiLCJodHRwOlwvXC93c28yLm9yZ1wvY2xhaW1zXC9hcHBsaWNhdGlvblVVSWQiOiIwZTU5NzEzOC05ZTIyLTQzNDAtYTU3MS0yZTY0Yjk0NTE4YmQiLCJodHRwOlwvXC93c28yLm9yZ1wvY2xhaW1zXC9zdWJzY3JpYmVyIjoiYWRtaW4iLCJhenAiOiIzSVRsb3VEMFVTX1ZmZGNDQXl0YTFhUkZRRlFhIiwiaHR0cDpcL1wvd3NvMi5vcmdcL2NsYWltc1wvdGllciI6IkdvbGQiLCJzY29wZSI6ImFtX2FwcGxpY2F0aW9uX3Njb3BlIGRlZmF1bHQiLCJleHAiOjE2MjU4MDg2NDYsImh0dHA6XC9cL3dzbzIub3JnXC9jbGFpbXNcL2FwcGxpY2F0aW9uaWQiOiIyIiwiaHR0cDpcL1wvd3NvMi5vcmdcL2NsYWltc1wvdXNlcnR5cGUiOiJBcHBsaWNhdGlvbl9Vc2VyIiwiaWF0IjoxNjI1ODA3NzQ2LCJodHRwOlwvXC93c28yLm9yZ1wvY2xhaW1zXC9hcGljb250ZXh0IjoiXC9ob3NwaXRhbFwvdjEifQ==.NSCkdnuxDYcW66Lq_VKUwgmIRwVEe05_haXQuYofbNG7skwypZxk4gU_BrvvtbuXoRsPBmq_9H1YbRXNzuQ3nKUA8wIw1j731piQKTLoVr6-lzBmO703hUl0vLttZ2EzWS0r6r3cm5TcDqZXCQoQcJfePPs-f2eU9CgbRXoNLVb5JiHRqkJI5euRxRucxR0rpgmoHFBmTA9s_CT6Tnno-b61xjiCmOnXgCQQLCTZn0WOAj6VJkbovmM1JcADyDK2IBJNi38NrRppPZZFBC-GPRjoQkL3v_0ZYV9m5mtSQTx3grPr52JwSqmKFJVVtM2OytRzl8D4qbRE1F6lNbStIA==");
 
             System.out.println(jws);
 
