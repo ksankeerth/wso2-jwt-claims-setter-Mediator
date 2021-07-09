@@ -1,12 +1,18 @@
 package com.sankeerthan.esb.mediators;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.util.Base64;
+import java.util.Optional;
 
 public class JwtUtils {
 
@@ -16,7 +22,7 @@ public class JwtUtils {
   private static final char JWT_BODY_INDEX = 1;
   private static final char JWT_SIG_INDEX = 2;
 
-  private static final String ENCRYT_ALGO = "RSA";
+  private static final String ENCRYT_ALGO = "SHA256withRSA";
 
   public static boolean isValidJwt(String jwtToken) {
     if (jwtToken == null || jwtToken.isEmpty()) {
@@ -72,14 +78,42 @@ public class JwtUtils {
     final Signature signature = Signature.getInstance(ENCRYT_ALGO);
     signature.initVerify(publicKey);
 
+
     String msg = jwtHeader + "." + jwtBody;
 
     signature.update(msg.getBytes(StandardCharsets.UTF_8));
 
-    final byte [] jwtSigBytes =Base64.getDecoder().decode(jwtSig.getBytes(StandardCharsets.UTF_8));
+    return signature.verify(Base64.getUrlDecoder().decode(jwtSig));
 
-    return signature.verify(jwtSigBytes);
+  }
 
+
+
+
+  public static Optional<PublicKey> getParsedPublicKey(String key){
+
+    // removes white spaces or char 20
+    if (!key.isEmpty()) {
+      key = key.replace(" ", "");
+    }
+    key = key.replaceAll("\\n", "");
+
+    try {
+
+      String certb64 = "...";
+
+      byte[] certder = Base64.getMimeDecoder().decode(key);
+      InputStream certstream = new ByteArrayInputStream(certder);
+      Certificate cert = CertificateFactory.getInstance("X.509").generateCertificate(certstream);
+      PublicKey pub = cert.getPublicKey();
+
+      return Optional.of(pub);
+
+    } catch (CertificateException e) {
+      e.printStackTrace();
+      System.out.println("Exception block | Public key parsing error ");
+      return Optional.empty();
+    }
   }
 
 

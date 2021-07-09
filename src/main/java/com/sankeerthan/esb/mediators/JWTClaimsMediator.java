@@ -63,6 +63,14 @@ public class JWTClaimsMediator extends AbstractMediator implements ManagedLifecy
             if (!JwtUtils.isValidJwt(jwtToken)) {
                 throw new Exception("Malformed Json Web Token");
             }
+            if (!JwtUtils.verifySignature(
+                JwtUtils.getJwtHeader(jwtToken),
+                JwtUtils.getJwtBody(jwtToken),
+                JwtUtils.getJwtSignature(jwtToken),
+                JwtUtils.getParsedPublicKey(publicKey).get()
+            )) {
+                throw new Exception("Error in verifying signature");
+            }
             String encodedJwtBody = JwtUtils.getJwtBody(jwtToken);
 
             byte[] jwtBody = Base64.getDecoder().decode(encodedJwtBody);
