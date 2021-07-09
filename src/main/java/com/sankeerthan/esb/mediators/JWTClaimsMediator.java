@@ -79,7 +79,7 @@ public class JWTClaimsMediator extends AbstractMediator implements ManagedLifecy
                 throw new Exception("Unknown error while setting claims from jwt");
             }
             String jsonBodyString = IOUtils.toString(jwtBody, String.valueOf(StandardCharsets.UTF_8));
-            JsonObject jwtBodyJson = (JsonObject) JsonParser.parseString(jsonBodyString);
+            JsonObject jwtBodyJson = (JsonObject) new JsonParser().parse(jsonBodyString);
 
             Set<String> claimsKeys = jwtBodyJson.keySet();
 
