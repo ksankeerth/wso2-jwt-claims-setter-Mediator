@@ -1,5 +1,9 @@
 package com.sankeerthan.esb.mediators;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import org.apache.commons.io.IOUtils;
 import org.apache.synapse.ManagedLifecycle;
 import org.apache.synapse.mediators.AbstractMediator;
 import org.apache.synapse.MessageContext;
@@ -10,11 +14,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.synapse.SynapseLog;
 import org.apache.synapse.SynapseException;
-import io.jsonwebtoken.Jws;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.Claims;
 
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Set;
 
 public class JWTClaimsMediator extends AbstractMediator implements ManagedLifecycle {
@@ -55,45 +58,37 @@ public class JWTClaimsMediator extends AbstractMediator implements ManagedLifecy
                 synLog.traceTrace("Message : " + synapseContext.getEnvelope());
             }
         }
-        log.info("Before jws clamis");
-        Jws<Claims> jws;
-        log.info("AFter jws claims variable definitions");
 
         try {
-            log.info("inside try");
-            jws = Jwts.parserBuilder()
-            .setSigningKey(publicKey)
-            .parseClaimsJws(jwtToken);
-             
-            log.info(jws);
+            if (!JwtUtils.isValidJwt(jwtToken)) {
+                throw new Exception("Malformed Json Web Token");
+            }
+            String encodedJwtBody = JwtUtils.getJwtBody(jwtToken);
 
+            byte[] jwtBody = Base64.getDecoder().decode(encodedJwtBody);
 
-            if (jws != null) {
-              Set<String> claimsKeys =  jws.getBody().keySet();
+            if (jwtBody == null || jwtBody.length == 0) {
+                throw new Exception("Unknown error while setting claims from jwt");
+            }
+            String jsonBodyString = IOUtils.toString(jwtBody, String.valueOf(StandardCharsets.UTF_8));
+            JsonObject jwtBodyJson = (JsonObject) JsonParser.parseString(jsonBodyString);
 
-              if (!claimsKeys.isEmpty()) {
-                  claimsKeys.stream().forEach(claimKey -> {
-                    synapseContext.setProperty(claimKey, jws.getBody().get(claimKey));
+            Set<String> claimsKeys = jwtBodyJson.keySet();
+
+            if (claimsKeys != null || claimsKeys.size() > 0) {
+                for (String claimKey : claimsKeys) {
+                    synapseContext.setProperty(claimKey, jwtBodyJson.get(claimKey).getAsString());
                     if(log.isDebugEnabled()){
-                          log.debug("Getting claim :"+claimKey+" , " +jws.getBody().get(claimKey) );
+                        log.debug("Getting claim :"+claimKey+" , " +jwtBodyJson.get(claimKey).getAsString() );
                     }
-                  });
-              }
-
+                }
             }
 
-            // we can safely trust the JWT
+        }catch (Exception e){
+            log.error("Error occurred when setting claims",e);
+        }
 
-        } catch (JwtException ex) {       // (5)
-            log.info(ex);
-            // we *cannot* use the JWT as intended by its creator
-            log.error(ex.getMessage(), ex);
-            throw new SynapseException(ex.getMessage(), ex);
-        }
-        if (synLog.isTraceOrDebugEnabled()) {
-            synLog.traceOrDebug("End : JWTDecoder mediator");
-        }
-        log.info("Finish mediation");
+
        
         return true;
     }
