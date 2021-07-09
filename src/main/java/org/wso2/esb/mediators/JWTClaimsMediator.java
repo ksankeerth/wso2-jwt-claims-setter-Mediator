@@ -12,6 +12,8 @@ import org.apache.synapse.SynapseLog;
 import org.apache.synapse.SynapseException;
 import io.jsonwebtoken.*;
 
+import java.util.Set;
+
 public class JWTClaimsMediator extends AbstractMediator implements ManagedLifecycle {
 
     private static Log log = LogFactory.getLog(JWTClaimsMediator.class);
@@ -42,21 +44,33 @@ public class JWTClaimsMediator extends AbstractMediator implements ManagedLifecy
         Jws<Claims> jws;
 
         try {
-            jws = Jwts.parserBuilder()  // (1)
-            .setSigningKey(publicKey)         // (2)
-            .build()                    // (3)
-            .parseClaimsJws(jwtToken); // (4)
-            
+            jws = Jwts.parser()
+            .setSigningKey(publicKey)
+            .parseClaimsJws(jwtToken);
+
+
+
+            if (jws != null) {
+              Set<String> claimsKeys =  jws.getBody().keySet();
+
+              if (!claimsKeys.isEmpty()) {
+                  claimsKeys.stream().forEach(claimKey -> {
+                    synapseContext.setProperty(claimKey, jws.getBody().get(claimKey));
+                    if(log.isDebugEnabled()){
+                          log.debug("Getting claim :"+claimKey+" , " +jws.getBody().get(claimKey) );
+                    }
+                  });
+              }
+
+            }
+
             // we can safely trust the JWT
-            // synapseContext.setProperty(tempPropName, claimEntry.getValue());
-            // if(log.isDebugEnabled()){
-            //     log.debug("Getting claim :"+tempPropName+" , " +claimEntry.getValue() );
-            // } 
-        catch (JwtException ex) {       // (5)
+
+        } catch (JwtException ex) {       // (5)
             
             // we *cannot* use the JWT as intended by its creator
-            log.error(e.getMessage(), e);
-            throw new SynapseException(e.getMessage(), e);
+            log.error(ex.getMessage(), ex);
+            throw new SynapseException(ex.getMessage(), ex);
         }
         if (synLog.isTraceOrDebugEnabled()) {
             synLog.traceOrDebug("End : JWTDecoder mediator");
