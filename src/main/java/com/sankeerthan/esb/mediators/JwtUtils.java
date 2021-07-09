@@ -10,7 +10,7 @@ import java.util.Base64;
 
 public class JwtUtils {
 
-  private static final String DOT= ".";
+  private static final String DOT= "\\.";
   private static final char JWT_PARTS_COUNT = 3;
   private static final char JWT_HEADER_INDEX = 0;
   private static final char JWT_BODY_INDEX = 1;
